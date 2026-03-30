@@ -20,6 +20,8 @@ public abstract class Entity {
     protected float maxHealth;
     protected boolean onGround;
     protected boolean alive;
+    protected float fallDistance;
+    protected int damageCooldownTicks;
 
     public Entity(World world) {
         this.id = nextId++;
@@ -33,6 +35,8 @@ public abstract class Entity {
         this.maxHealth = 20;
         this.onGround = false;
         this.alive = true;
+        this.fallDistance = 0;
+        this.damageCooldownTicks = 0;
     }
 
     // Getters and Setters
@@ -48,21 +52,69 @@ public abstract class Entity {
     public float getHealth() { return health; }
     public float getMaxHealth() { return maxHealth; }
     public void setHealth(float health) { this.health = Math.max(0, Math.min(health, maxHealth)); }
-    public void damage(float amount) { this.health -= amount; }
+    public void damage(float amount) {
+        if (amount <= 0 || !isAlive()) {
+            return;
+        }
+        if (!bypassDamageCooldown() && damageCooldownTicks > 0) {
+            return;
+        }
+
+        this.health -= amount;
+        onDamaged(amount);
+        if (!bypassDamageCooldown()) {
+            this.damageCooldownTicks = 10;
+        }
+        if (this.health <= 0) {
+            this.health = 0;
+            kill();
+        }
+    }
     public void heal(float amount) { this.health = Math.min(health + amount, maxHealth); }
     public boolean isAlive() { return alive && health > 0; }
     public boolean isOnGround() { return onGround; }
+    public void addVelocity(double dx, double dy, double dz) {
+        velocity.x += dx;
+        velocity.y += dy;
+        velocity.z += dz;
+    }
 
     public void update() {
+        if (damageCooldownTicks > 0) {
+            damageCooldownTicks--;
+        }
+
         // Apply gravity and drag.
         velocity.y -= 0.08f;
         velocity.y *= 0.98f;
 
         moveAndCollide(velocity.x, velocity.y, velocity.z);
 
+        if (onGround) {
+            if (takesFallDamage() && fallDistance > 3.0f) {
+                // Roughly match classic fall damage: 1 hp per block over safe distance.
+                damage(fallDistance - 3.0f);
+            }
+            fallDistance = 0;
+        } else if (velocity.y < 0) {
+            fallDistance += (float) -velocity.y;
+        }
+
         // Horizontal velocity is controlled by input each frame.
         velocity.x = 0;
         velocity.z = 0;
+    }
+
+    protected boolean takesFallDamage() {
+        return false;
+    }
+
+    protected boolean bypassDamageCooldown() {
+        return false;
+    }
+
+    protected void onDamaged(float amount) {
+        // Optional override for hit reactions.
     }
 
     protected void moveAndCollide(double dx, double dy, double dz) {
@@ -100,6 +152,7 @@ public abstract class Entity {
 
     public void kill() {
         alive = false;
+        health = 0;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.minecraft.mcpe.entity;
 
+import com.minecraft.mcpe.block.Block;
 import com.minecraft.mcpe.world.World;
 
 import java.util.Random;
@@ -34,7 +35,13 @@ public class Zombie extends Mob {
 
     @Override
     public void updateAI(Player player) {
-        if (player == null || !player.isAlive()) {
+        if (world.isDayTime() && world.canSeeSky((int) Math.floor(position.x), (int) Math.floor(position.y + 1), (int) Math.floor(position.z))) {
+            if (world.getWorldTime() % 40 == 0) {
+                damage(1.0f);
+            }
+        }
+
+        if (player == null || !player.isAlive() || player.isCreative()) {
             wander();
             return;
         }
@@ -43,6 +50,7 @@ public class Zombie extends Mob {
 
         if (distance <= 1.5 && attackCooldownTicks <= 0) {
             player.damage(attackDamage);
+            knockbackPlayer(player, 0.20, 0.10);
             attackCooldownTicks = 20;
         }
 
@@ -61,5 +69,16 @@ public class Zombie extends Mob {
         }
         wanderTicks--;
         moveToward(wanderTargetX, wanderTargetZ, 0.6);
+    }
+
+    @Override
+    public int[] getDropBlockIds(Random random) {
+        // Zombies drop flesh and bones
+        int[] drops1 = dropRange(Block.DIRT, 1, 2, random);
+        int[] drops2 = maybeDropRange(Block.LOG, 1, 1, 0.3, random);
+        int[] result = new int[drops1.length + drops2.length];
+        System.arraycopy(drops1, 0, result, 0, drops1.length);
+        System.arraycopy(drops2, 0, result, drops1.length, drops2.length);
+        return result;
     }
 }

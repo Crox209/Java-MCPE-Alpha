@@ -1,7 +1,16 @@
 package com.minecraft.mcpe.renderer;
 
 import com.minecraft.mcpe.entity.Entity;
+import com.minecraft.mcpe.entity.Cow;
+import com.minecraft.mcpe.entity.Pig;
+import com.minecraft.mcpe.entity.Sheep;
+import com.minecraft.mcpe.entity.Chicken;
+import com.minecraft.mcpe.entity.Skeleton;
+import com.minecraft.mcpe.entity.Spider;
+import com.minecraft.mcpe.entity.Creeper;
 import com.minecraft.mcpe.entity.Mob;
+import com.minecraft.mcpe.entity.ItemEntity;
+import com.minecraft.mcpe.entity.Zombie;
 import com.minecraft.mcpe.util.Vector3f;
 import com.minecraft.mcpe.world.Chunk;
 import com.minecraft.mcpe.world.World;
@@ -88,9 +97,31 @@ public class GameRenderer {
             }
 
             if (entity instanceof Mob) {
-                g.setColor(new Color(30, 130, 30));
+                if (entity instanceof Zombie) {
+                    g.setColor(new Color(30, 130, 30));
+                } else if (entity instanceof Skeleton) {
+                    g.setColor(new Color(210, 210, 210));
+                } else if (entity instanceof Spider) {
+                    g.setColor(new Color(45, 45, 45));
+                } else if (entity instanceof Creeper) {
+                    g.setColor(new Color(20, 180, 20));
+                } else if (entity instanceof Cow) {
+                    g.setColor(new Color(130, 85, 45));
+                } else if (entity instanceof Pig) {
+                    g.setColor(new Color(238, 150, 170));
+                } else if (entity instanceof Sheep) {
+                    g.setColor(new Color(235, 235, 235));
+                } else if (entity instanceof Chicken) {
+                    g.setColor(new Color(245, 245, 200));
+                } else {
+                    g.setColor(new Color(30, 130, 30));
+                }
             } else {
-                g.setColor(new Color(220, 220, 220));
+                if (entity instanceof ItemEntity) {
+                    g.setColor(new Color(255, 215, 60));
+                } else {
+                    g.setColor(new Color(220, 220, 220));
+                }
             }
             g.fillOval(screenX - 4, screenY - 10, 10, 10);
             g.setColor(Color.BLACK);

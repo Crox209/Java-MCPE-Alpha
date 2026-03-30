@@ -13,6 +13,12 @@ This is a Java-based game engine implementation featuring:
 - NBT data format support
 - Creative and Survival modes
 - Mouse and keyboard controls
+- Hostile mobs and passive animals
+- Dropped item entities with pickup
+- Day/night-biased mob spawning
+- Basic hostile and passive mob AI behavior
+- Physical item drops from broken blocks and mob loot
+- Nearby item attraction and stack merging
 
 ## Requirements
 
@@ -101,6 +107,7 @@ World files are stored in:
 - **Right Click** - Place block
 - **Middle Click** - Pick targeted block into selected slot
 - **1-9 / Mouse Wheel** - Select hotbar slot
+- **Left Click (on mob)** - Melee attack
 - **F5** - Save world
 - **F9** - Load world
 - **ESC** - Close game
