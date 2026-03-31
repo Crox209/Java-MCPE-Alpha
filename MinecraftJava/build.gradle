@@ -59,19 +59,6 @@ dependencies {
     runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-windows-x86'
     runtimeOnly 'org.lwjgl:lwjgl-stb::natives-windows-x86'
     
-    runtimeOnly 'org.lwjgl:lwjgl::natives-macos-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-macos-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-macos-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-macos-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl::natives-linux-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-linux-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-linux-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-linux-arm64'
-    runtimeOnly 'org.lwjgl:lwjgl::natives-windows-x86'
-    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-windows-x86'
-    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-windows-x86'
-    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-windows-x86'
-    
     // Testing
     testImplementation 'junit:junit:4.13.2'
 }
@@ -79,6 +66,17 @@ dependencies {
 application {
     mainClass = 'com.minecraft.mcpe.MinecraftPE3D'
     applicationName = 'mcpe-java'
+
+    applicationDefaultJvmArgs = []
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        applicationDefaultJvmArgs += ['-XstartOnFirstThread']
+    }
+}
+
+tasks.withType(JavaExec) {
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        jvmArgs += ['-XstartOnFirstThread']
+    }
 }
 
 tasks.named('distZip') {

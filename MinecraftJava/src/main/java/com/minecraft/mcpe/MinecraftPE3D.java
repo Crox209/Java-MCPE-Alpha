@@ -103,7 +103,10 @@ public class MinecraftPE3D {
         System.out.println("Starting Minecraft PE 3D (LWJGL " + org.lwjgl.Version.getVersion() + ")!");
 
         init();
-                // Spawn some pigs and zombies
+        
+        localPlayer = new Player("Steve", world);
+        
+        // Spawn some pigs and zombies
         for (int i = 0; i < 5; i++) {
             Pig pig = new Pig(world);
             pig.getPosition().x = camX + (Math.random() * 10 - 5); pig.getPosition().y = camY + 2; pig.getPosition().z = camZ + (Math.random() * 10 - 5);
@@ -222,6 +225,8 @@ public class MinecraftPE3D {
         
         System.out.println("Generating World...");
         world = new World("world", 12345L);
+        world.generateTerrain();
+        
         // The World generates chunks around 0,0 let's grab them and render
         for (Chunk c : world.getLoadedChunks()) {
             ChunkRenderer cr = new ChunkRenderer(c);
@@ -315,17 +320,16 @@ public class MinecraftPE3D {
 
             if (image == null) {
                 System.err.println("Failed to load texture file: " + STBImage.stbi_failure_reason());
-                return;
+            } else {
+                terrainTexture = glGenTextures();
+                glBindTexture(GL_TEXTURE_2D, terrainTexture);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w.get(0), h.get(0), 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+                STBImage.stbi_image_free(image);
             }
-
-            terrainTexture = glGenTextures();
-            glBindTexture(GL_TEXTURE_2D, terrainTexture);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w.get(0), h.get(0), 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-            STBImage.stbi_image_free(image);
         }
         guiTexture = loadGenericTexture("/assets/gui/gui.png");
         iconsTexture = loadGenericTexture("/assets/gui/icons.png");
@@ -630,6 +634,7 @@ public class MinecraftPE3D {
             blockId = world.getBlock(blockX, blockY, blockZ);
         }
 
+        camX += xd;
         camY += yd;
         
         // If we hit a solid block
@@ -749,10 +754,13 @@ public class MinecraftPE3D {
                 }
                 glPopMatrix();
             }
-            glEnable(GL_CULL_FACE);
+            // Temporarily disable culling so hand/GUI render properly regardless of orientation
+            glDisable(GL_CULL_FACE);
 
             renderHeldItem(currentTime);
             renderGUI();
+
+            glEnable(GL_CULL_FACE);
 
             glfwSwapBuffers(window);
             glfwPollEvents();

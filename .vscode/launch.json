@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Minecraft PE 3D (macOS/Linux/Windows)",
+            "request": "launch",
+            "mainClass": "com.minecraft.mcpe.MinecraftPE3D",
+            "projectName": "MinecraftJava",
+            "vmArgs": "-XstartOnFirstThread"
+        }
+    ]
+}
