@@ -6,7 +6,15 @@ import com.minecraft.mcpe.world.World;
 /**
  * Entity - base class for all entities (players, mobs, items, etc.)
  */
+import com.minecraft.mcpe.util.AABB;
+
 public abstract class Entity {
+    public AABB bb;
+    public boolean onGround = false;
+    public double xd, yd, zd;
+    public float bbWidth = 0.6f;
+    public float bbHeight = 1.8f;
+
     protected static int nextId = 0;
     
     protected int id;
@@ -18,7 +26,7 @@ public abstract class Entity {
     protected float height;
     protected float health;
     protected float maxHealth;
-    protected boolean onGround;
+    
     protected boolean alive;
     protected float fallDistance;
     protected int damageCooldownTicks;
@@ -80,6 +88,9 @@ public abstract class Entity {
     }
 
     public void update() {
+        velocity.x = 0;
+        velocity.z = 0;
+
         if (damageCooldownTicks > 0) {
             damageCooldownTicks--;
         }
@@ -100,9 +111,7 @@ public abstract class Entity {
             fallDistance += (float) -velocity.y;
         }
 
-        // Horizontal velocity is controlled by input each frame.
-        velocity.x = 0;
-        velocity.z = 0;
+
     }
 
     protected boolean takesFallDamage() {

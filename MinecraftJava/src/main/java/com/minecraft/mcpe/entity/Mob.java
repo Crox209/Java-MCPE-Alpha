@@ -63,7 +63,9 @@ public abstract class Mob extends Entity {
 
         double nx = dx / len;
         double nz = dz / len;
-        moveAndCollide(nx * moveSpeed * speedScale, 0, nz * moveSpeed * speedScale);
+        this.velocity.x = nx * moveSpeed * speedScale;
+        this.velocity.z = nz * moveSpeed * speedScale;
+        moveAndCollide(this.velocity.x, 0, this.velocity.z);
     }
 
     protected double distanceTo(Player player) {
