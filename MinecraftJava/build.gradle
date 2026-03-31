@@ -46,6 +46,32 @@ dependencies {
     runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-macos'
     runtimeOnly 'org.lwjgl:lwjgl-stb::natives-macos'
 
+    runtimeOnly 'org.lwjgl:lwjgl::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-windows-x86'
+    
+    runtimeOnly 'org.lwjgl:lwjgl::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-macos-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-linux-arm64'
+    runtimeOnly 'org.lwjgl:lwjgl::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-opengl::natives-windows-x86'
+    runtimeOnly 'org.lwjgl:lwjgl-stb::natives-windows-x86'
+    
     // Testing
     testImplementation 'junit:junit:4.13.2'
 }
@@ -68,7 +94,7 @@ tasks.named('jar') {
     archiveBaseName = 'mcpe-java'
 
     manifest {
-        attributes 'Main-Class': 'com.minecraft.mcpe.MinecraftPE'
+        attributes 'Main-Class': 'com.minecraft.mcpe.MinecraftPE3D'
     }
     
     from {
