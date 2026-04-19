@@ -22,6 +22,8 @@ import com.minecraft.mcpe.util.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.minecraft.mcpe.world.generation.PerlinNoise;
+
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -263,7 +265,7 @@ public class World {
     public void generateTerrain() {
         logger.info("Generating terrain for world: {}", name);
         
-        // Generate a simple flat terrain
+        PerlinNoise noise = new PerlinNoise(new Random(seed));
         Random random = new Random(seed);
         
         for (int chunkX = -5; chunkX <= 5; chunkX++) {
@@ -272,37 +274,71 @@ public class World {
                 
                 for (int x = 0; x < Chunk.WIDTH; x++) {
                     for (int z = 0; z < Chunk.DEPTH; z++) {
+                        int worldX = chunkX * Chunk.WIDTH + x;
+                        int worldZ = chunkZ * Chunk.DEPTH + z;
+                        
+                        // Generate rolling hills height (base 60, noise adds up to 15 blocks)
+                        double noiseVal = noise.getValue(worldX * 0.05, worldZ * 0.05);
+                        int h = 60 + (int) (noiseVal * 10);
+                        
                         // Bedrock layer
                         chunk.setBlock(x, 0, z, Block.BEDROCK);
                         
                         // Stone layers
-                        for (int y = 1; y < 64; y++) {
+                        for (int y = 1; y < h; y++) {
                             chunk.setBlock(x, y, z, Block.STONE);
                         }
                         
-                        // Dirt layers
-                        for (int y = 61; y < 63; y++) {
-                            chunk.setBlock(x, y, z, Block.DIRT);
-                        }
-                        
-                        // Grass on top
-                        chunk.setBlock(x, 63, z, Block.GRASS);
-                        
-                        // Sometimes add trees and vegetation
-                        if (random.nextDouble() < 0.02) {
-                            // Tree
-                            int treeHeight = 4 + random.nextInt(3);
-                            for (int y = 64; y < 64 + treeHeight; y++) {
-                                chunk.setBlock(x, y, z, Block.LOG);
+                        // Top soil layers
+                        chunk.setBlock(x, h - 2, z, Block.DIRT);
+                        chunk.setBlock(x, h - 1, z, Block.DIRT);
+                        chunk.setBlock(x, h, z, Block.GRASS);
+                    }
+                }
+            }
+        }
+        
+        // Second pass for trees to ensure they cross chunk borders correctly
+        random = new Random(seed);
+        for (int chunkX = -5; chunkX <= 5; chunkX++) {
+            for (int chunkZ = -5; chunkZ <= 5; chunkZ++) {
+                for (int x = 0; x < Chunk.WIDTH; x++) {
+                    for (int z = 0; z < Chunk.DEPTH; z++) {
+                        if (random.nextDouble() < 0.005) {
+                            int worldX = chunkX * Chunk.WIDTH + x;
+                            int worldZ = chunkZ * Chunk.DEPTH + z;
+                            
+                            // Find surface height
+                            int h = 127;
+                            while (h > 0 && getBlock(worldX, h, worldZ) == Block.AIR) {
+                                h--;
                             }
-                            // Leaves
-                            for (int dx = -2; dx <= 2; dx++) {
-                                for (int dz = -2; dz <= 2; dz++) {
-                                    for (int dy = 0; dy < treeHeight; dy++) {
-                                        setBlock(chunkX * Chunk.WIDTH + x + dx, 64 + treeHeight + dy, 
-                                                 chunkZ * Chunk.DEPTH + z + dz, Block.LEAVES);
+                            
+                            if (getBlock(worldX, h, worldZ) == Block.GRASS) {
+                                int treeHeight = 4 + random.nextInt(3);
+                                
+                                // Leaves array (classic oak shape)
+                                for (int dy = treeHeight - 3; dy <= treeHeight; dy++) {
+                                    int radius = (dy >= treeHeight - 1) ? 1 : 2;
+                                    for (int dx = -radius; dx <= radius; dx++) {
+                                        for (int dz = -radius; dz <= radius; dz++) {
+                                            // Make classic cross shape for top leaves
+                                            if (dy == treeHeight && Math.abs(dx) == radius && Math.abs(dz) == radius) continue;
+                                            
+                                            if (getBlock(worldX + dx, h + 1 + dy, worldZ + dz) == Block.AIR) {
+                                                setBlock(worldX + dx, h + 1 + dy, worldZ + dz, Block.LEAVES);
+                                            }
+                                        }
                                     }
                                 }
+                                
+                                // Trunk
+                                for (int dy = 0; dy < treeHeight; dy++) {
+                                    setBlock(worldX, h + 1 + dy, worldZ, Block.LOG);
+                                }
+                                
+                                // Set proper dirt underneath
+                                setBlock(worldX, h, worldZ, Block.DIRT);
                             }
                         }
                     }

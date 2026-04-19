@@ -12,6 +12,7 @@ import org.lwjgl.stb.STBImage;
 import com.minecraft.mcpe.world.World;
 import com.minecraft.mcpe.world.Chunk;
 import com.minecraft.mcpe.renderer.ChunkRenderer;
+import com.minecraft.mcpe.renderer.BlockTextureMap;
 import com.minecraft.mcpe.entity.Mob;
 import com.minecraft.mcpe.entity.Player;
 import com.minecraft.mcpe.entity.Cow;
@@ -32,6 +33,7 @@ import com.minecraft.mcpe.entity.Entity;
 import com.minecraft.mcpe.renderer.model.PigModel;
 import com.minecraft.mcpe.renderer.model.ZombieModel;
 import com.minecraft.mcpe.renderer.model.Model;
+import com.minecraft.mcpe.util.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,6 +54,11 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class MinecraftPE3D {
+    private enum GameState {
+        MAIN_MENU,
+        PLAYING
+    }
+
     private float bobPhase = 0.0f;
     private float bobO = 0.0f;
 
@@ -98,34 +105,17 @@ public class MinecraftPE3D {
     private int pigTexture;
     private int zombieTexture;
 
+    private GameState gameState = GameState.MAIN_MENU;
+    private double menuOpenedAt = 0.0;
+    private double lastMouseX;
+    private double lastMouseY;
+    private boolean firstMouse = true;
+
 
     public void run() {
         System.out.println("Starting Minecraft PE 3D (LWJGL " + org.lwjgl.Version.getVersion() + ")!");
 
         init();
-        
-        localPlayer = new Player("Steve", world);
-        
-        // Spawn some pigs and zombies
-        for (int i = 0; i < 5; i++) {
-            Pig pig = new Pig(world);
-            pig.getPosition().x = camX + (Math.random() * 10 - 5); pig.getPosition().y = camY + 2; pig.getPosition().z = camZ + (Math.random() * 10 - 5);
-            entities.add(pig);
-        }
-        for (int i = 0; i < 3; i++) {
-            Zombie zombie = new Zombie(world);
-            zombie.getPosition().x = camX + (Math.random() * 10 - 5); zombie.getPosition().y = camY + 2; zombie.getPosition().z = camZ + (Math.random() * 10 - 5);
-            entities.add(zombie);
-        }
-        for (int i = 0; i < 2; i++) {
-            Cow cow = new Cow(world); cow.getPosition().x = camX + (Math.random() * 10 - 5); cow.getPosition().y = camY + 2; cow.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(cow);
-            Sheep sheep = new Sheep(world); sheep.getPosition().x = camX + (Math.random() * 10 - 5); sheep.getPosition().y = camY + 2; sheep.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(sheep);
-            Chicken chicken = new Chicken(world); chicken.getPosition().x = camX + (Math.random() * 10 - 5); chicken.getPosition().y = camY + 2; chicken.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(chicken);
-            Creeper creeper = new Creeper(world); creeper.getPosition().x = camX + (Math.random() * 10 - 5); creeper.getPosition().y = camY + 2; creeper.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(creeper);
-            Spider spider = new Spider(world); spider.getPosition().x = camX + (Math.random() * 10 - 5); spider.getPosition().y = camY + 2; spider.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(spider);
-            Skeleton skeleton = new Skeleton(world); skeleton.getPosition().x = camX + (Math.random() * 10 - 5); skeleton.getPosition().y = camY + 2; skeleton.getPosition().z = camZ + (Math.random() * 10 - 5); entities.add(skeleton);
-        }
-
 
         loop();
 
@@ -149,8 +139,20 @@ public class MinecraftPE3D {
 
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-                glfwSetWindowShouldClose(window, true);
+                if (gameState == GameState.PLAYING) {
+                    gameState = GameState.MAIN_MENU;
+                    menuOpenedAt = glfwGetTime();
+                    for (int i = 0; i < keys.length; i++) keys[i] = false;
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                } else {
+                    glfwSetWindowShouldClose(window, true);
+                }
             }
+
+            if (gameState == GameState.MAIN_MENU && action == GLFW_PRESS && key == GLFW_KEY_ENTER) {
+                startSingleplayer();
+            }
+
             if (key >= 0 && key < 1024) {
                 if (action == GLFW_PRESS) keys[key] = true;
                 else if (action == GLFW_RELEASE) keys[key] = false;
@@ -158,12 +160,15 @@ public class MinecraftPE3D {
         });
 
         // Mouse look callback
-        final double[] lastMouseX = {width / 2.0};
-        final double[] lastMouseY = {height / 2.0};
-        final boolean[] firstMouse = {true};
+        lastMouseX = width / 2.0;
+        lastMouseY = height / 2.0;
+        firstMouse = true;
 
                 // Scroll callback for hotbar selection
         glfwSetScrollCallback(window, (window, xoffset, yoffset) -> {
+            if (gameState != GameState.PLAYING) {
+                return;
+            }
             if (yoffset > 0) {
                 selectedHotbarSlot = (selectedHotbarSlot - 1);
                 if (selectedHotbarSlot < 0) selectedHotbarSlot = 8;
@@ -173,16 +178,20 @@ public class MinecraftPE3D {
         });
 
         glfwSetCursorPosCallback(window, (window, xpos, ypos) -> {
-            if (firstMouse[0]) {
-                lastMouseX[0] = xpos;
-                lastMouseY[0] = ypos;
-                firstMouse[0] = false;
+            if (gameState != GameState.PLAYING) {
+                return;
             }
 
-            double xoffset = xpos - lastMouseX[0];
-            double yoffset = lastMouseY[0] - ypos; // reversed since y-coordinates go from bottom to top
-            lastMouseX[0] = xpos;
-            lastMouseY[0] = ypos;
+            if (firstMouse) {
+                lastMouseX = xpos;
+                lastMouseY = ypos;
+                firstMouse = false;
+            }
+
+            double xoffset = xpos - lastMouseX;
+            double yoffset = lastMouseY - ypos; // reversed since y-coordinates go from bottom to top
+            lastMouseX = xpos;
+            lastMouseY = ypos;
 
             float sensitivity = 0.1f;
             yaw += xoffset * sensitivity;
@@ -194,15 +203,24 @@ public class MinecraftPE3D {
 
         glfwSetMouseButtonCallback(window, (win, button, action, mods) -> {
             if (action == GLFW_PRESS) {
-                if (button == GLFW_MOUSE_BUTTON_LEFT) {
-                    interactBlock(false); // Break block
-                } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                    interactBlock(true); // Place cobblestone
+                if (gameState == GameState.PLAYING) {
+                    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                        interactBlock(false); // Break block
+                    } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+                        interactBlock(true); // Place block
+                    }
+                } else if (gameState == GameState.MAIN_MENU && button == GLFW_MOUSE_BUTTON_LEFT) {
+                    try (MemoryStack stack = stackPush()) {
+                        DoubleBuffer mx = stack.mallocDouble(1);
+                        DoubleBuffer my = stack.mallocDouble(1);
+                        glfwGetCursorPos(window, mx, my);
+                        handleMainMenuClick((float) mx.get(0), (float) my.get(0));
+                    }
                 }
             }
         });
 
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Lock mouse
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
         glfwSetFramebufferSizeCallback(window, (window, w, h) -> {
             this.width = w;
@@ -220,8 +238,11 @@ public class MinecraftPE3D {
         }
 
         glfwMakeContextCurrent(window);
+        GL.createCapabilities(); // Must be called IMMEDIATELY after context binding in Linux/Xvfb
         glfwSwapInterval(1);
         glfwShowWindow(window);
+        gameState = GameState.MAIN_MENU;
+        menuOpenedAt = glfwGetTime();
         
         System.out.println("Generating World...");
         world = new World("world", 12345L);
@@ -421,22 +442,6 @@ public class MinecraftPE3D {
         }
     }
 
-            private int getBlockTexture(int blockId) {
-        switch (blockId) {
-            case 1: return 1; // Stone
-            case 2: return 0; // Grass
-            case 3: return 2; // Dirt
-            case 4: return 16; // Cobblestone
-            case 5: return 4; // Wood planks
-            case 17: return 20; // Log
-            case 20: return 49; // Glass
-            case 45: return 7; // Brick
-            case 87: return 103; // Netherrack
-            case 35: return 64; // Wool
-            default: return 1;
-        }
-    }
-
     private void renderHeldItem(long currentTime) {
         glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so hand renders over world
         
@@ -469,7 +474,9 @@ public class MinecraftPE3D {
         
         // Render current block using Tessellator
         int blockId = hotbarBlocks[selectedHotbarSlot];
-        int texIdx = getBlockTexture(blockId);
+        int texTop = BlockTextureMap.getTopTexture(blockId);
+        int texSide = BlockTextureMap.getSideTexture(blockId);
+        int texBottom = BlockTextureMap.getBottomTexture(blockId);
         
         glBindTexture(GL_TEXTURE_2D, terrainTexture);
         glEnable(GL_DEPTH_TEST);
@@ -479,16 +486,21 @@ public class MinecraftPE3D {
         
         // Just draw a basic cube centered at 0,0,0
         float s = 0.5f;
-        float texU = (texIdx % 16) * 16.0f / 256.0f;
-        float texV = (texIdx / 16) * 16.0f / 256.0f;
         float texSize = 16.0f / 256.0f;
+
+        float sideU = (texSide % 16) * texSize;
+        float sideV = (texSide / 16) * texSize;
+        float topU = (texTop % 16) * texSize;
+        float topV = (texTop / 16) * texSize;
+        float bottomU = (texBottom % 16) * texSize;
+        float bottomV = (texBottom / 16) * texSize;
         
-        t.addVertexWithUV(-s, -s, s, texU, texV+texSize); t.addVertexWithUV(s, -s, s, texU+texSize, texV+texSize); t.addVertexWithUV(s, s, s, texU+texSize, texV); t.addVertexWithUV(-s, s, s, texU, texV); // Front
-        t.addVertexWithUV(-s, -s, -s, texU, texV+texSize); t.addVertexWithUV(-s, s, -s, texU+texSize, texV+texSize); t.addVertexWithUV(s, s, -s, texU+texSize, texV); t.addVertexWithUV(s, -s, -s, texU, texV); // Back
-        t.addVertexWithUV(-s, s, -s, texU, texV+texSize); t.addVertexWithUV(-s, s, s, texU+texSize, texV+texSize); t.addVertexWithUV(s, s, s, texU+texSize, texV); t.addVertexWithUV(s, s, -s, texU, texV); // Top
-        t.addVertexWithUV(-s, -s, -s, texU, texV+texSize); t.addVertexWithUV(s, -s, -s, texU+texSize, texV+texSize); t.addVertexWithUV(s, -s, s, texU+texSize, texV); t.addVertexWithUV(-s, -s, s, texU, texV); // Bottom
-        t.addVertexWithUV(-s, -s, -s, texU, texV+texSize); t.addVertexWithUV(-s, -s, s, texU+texSize, texV+texSize); t.addVertexWithUV(-s, s, s, texU+texSize, texV); t.addVertexWithUV(-s, s, -s, texU, texV); // Left
-        t.addVertexWithUV(s, -s, -s, texU, texV+texSize); t.addVertexWithUV(s, s, -s, texU+texSize, texV+texSize); t.addVertexWithUV(s, s, s, texU+texSize, texV); t.addVertexWithUV(s, -s, s, texU, texV); // Right
+        t.addVertexWithUV(-s, -s, s, sideU, sideV + texSize); t.addVertexWithUV(s, -s, s, sideU + texSize, sideV + texSize); t.addVertexWithUV(s, s, s, sideU + texSize, sideV); t.addVertexWithUV(-s, s, s, sideU, sideV); // Front
+        t.addVertexWithUV(-s, -s, -s, sideU, sideV + texSize); t.addVertexWithUV(-s, s, -s, sideU + texSize, sideV + texSize); t.addVertexWithUV(s, s, -s, sideU + texSize, sideV); t.addVertexWithUV(s, -s, -s, sideU, sideV); // Back
+        t.addVertexWithUV(-s, s, -s, topU, topV + texSize); t.addVertexWithUV(-s, s, s, topU + texSize, topV + texSize); t.addVertexWithUV(s, s, s, topU + texSize, topV); t.addVertexWithUV(s, s, -s, topU, topV); // Top
+        t.addVertexWithUV(-s, -s, -s, bottomU, bottomV + texSize); t.addVertexWithUV(s, -s, -s, bottomU + texSize, bottomV + texSize); t.addVertexWithUV(s, -s, s, bottomU + texSize, bottomV); t.addVertexWithUV(-s, -s, s, bottomU, bottomV); // Bottom
+        t.addVertexWithUV(-s, -s, -s, sideU, sideV + texSize); t.addVertexWithUV(-s, -s, s, sideU + texSize, sideV + texSize); t.addVertexWithUV(-s, s, s, sideU + texSize, sideV); t.addVertexWithUV(-s, s, -s, sideU, sideV); // Left
+        t.addVertexWithUV(s, -s, -s, sideU, sideV + texSize); t.addVertexWithUV(s, s, -s, sideU + texSize, sideV + texSize); t.addVertexWithUV(s, s, s, sideU + texSize, sideV); t.addVertexWithUV(s, -s, s, sideU, sideV); // Right
         t.draw();
 
         glMatrixMode(GL_PROJECTION);
@@ -588,6 +600,134 @@ public class MinecraftPE3D {
         glPopMatrix();
     }
 
+    private void startSingleplayer() {
+        localPlayer = new Player("Steve", world);
+
+        Vector3f spawnPoint = world.getSpawnPoint();
+        camX = (float) spawnPoint.x;
+        camY = (float) spawnPoint.y + 2.0f;
+        camZ = (float) spawnPoint.z;
+        yaw = 0.0f;
+        pitch = 0.0f;
+        yd = 0.0;
+        localPlayer.setPosition(new Vector3f(camX, camY, camZ));
+
+        gameState = GameState.PLAYING;
+        firstMouse = true;
+        for (int i = 0; i < keys.length; i++) keys[i] = false;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+
+    private boolean isPointInRect(float px, float py, float x, float y, float w, float h) {
+        return px >= x && px <= x + w && py >= y && py <= y + h;
+    }
+
+    private void drawRect(float x, float y, float w, float h, float r, float g, float b, float a) {
+        glColor4f(r, g, b, a);
+        glBegin(GL_QUADS);
+        glVertex2f(x, y);
+        glVertex2f(x + w, y);
+        glVertex2f(x + w, y + h);
+        glVertex2f(x, y + h);
+        glEnd();
+    }
+
+    private void drawMenuButton(float x, float y, float w, float h, String label, boolean hovered) {
+        float base = hovered ? 0.37f : 0.28f;
+        drawRect(x, y, w, h, base, base, base, 0.95f);
+        drawRect(x + 2.0f, y + 2.0f, w - 4.0f, 2.0f, 0.65f, 0.65f, 0.65f, 0.85f);
+        drawRect(x + 2.0f, y + h - 4.0f, w - 4.0f, 2.0f, 0.08f, 0.08f, 0.08f, 0.7f);
+
+        if (fontRenderer != null) {
+            float textX = x + (w - (label.length() * 8.0f)) * 0.5f;
+            float textY = y + (h - 8.0f) * 0.5f;
+            fontRenderer.drawString(label, textX, textY, 0xFFFFFFFF);
+        }
+    }
+
+    private void renderMainMenu() {
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_TEXTURE_2D);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        glOrtho(0, width, height, 0, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        drawRect(0, 0, width, height, 0.17f, 0.20f, 0.26f, 1.0f);
+        drawRect(0, 0, width, height * 0.45f, 0.34f, 0.55f, 0.78f, 0.55f);
+
+        float panelW = 360.0f;
+        float panelH = 220.0f;
+        float panelX = (width - panelW) * 0.5f;
+        float panelY = (height - panelH) * 0.5f;
+        drawRect(panelX, panelY, panelW, panelH, 0.09f, 0.09f, 0.09f, 0.72f);
+
+        float btnW = 260.0f;
+        float btnH = 36.0f;
+        float btnX = (width - btnW) * 0.5f;
+        float playY = panelY + 88.0f;
+        float quitY = playY + 48.0f;
+
+        float mouseX;
+        float mouseY;
+        try (MemoryStack stack = stackPush()) {
+            DoubleBuffer mx = stack.mallocDouble(1);
+            DoubleBuffer my = stack.mallocDouble(1);
+            glfwGetCursorPos(window, mx, my);
+            mouseX = (float) mx.get(0);
+            mouseY = (float) my.get(0);
+        }
+
+        glEnable(GL_TEXTURE_2D);
+        if (fontRenderer != null) {
+            fontRenderer.drawString("MINECRAFT PE", panelX + 82.0f, panelY + 28.0f, 0xFFFFFFFF);
+            fontRenderer.drawString("Java 3D Alpha", panelX + 112.0f, panelY + 46.0f, 0xFFE0E0E0);
+        }
+        glDisable(GL_TEXTURE_2D);
+
+        drawMenuButton(btnX, playY, btnW, btnH, "Singleplayer", isPointInRect(mouseX, mouseY, btnX, playY, btnW, btnH));
+        drawMenuButton(btnX, quitY, btnW, btnH, "Quit Game", isPointInRect(mouseX, mouseY, btnX, quitY, btnW, btnH));
+
+        if (fontRenderer != null) {
+            glEnable(GL_TEXTURE_2D);
+            fontRenderer.drawString("v0.1.1 alpha", 8.0f, height - 16.0f, 0xFFFFFFFF);
+            glDisable(GL_TEXTURE_2D);
+        }
+
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    private void handleMainMenuClick(float mouseX, float mouseY) {
+        if (glfwGetTime() - menuOpenedAt < 0.25) {
+            return;
+        }
+
+        float panelY = (height - 220.0f) * 0.5f;
+        float btnW = 260.0f;
+        float btnH = 36.0f;
+        float btnX = (width - btnW) * 0.5f;
+        float playY = panelY + 88.0f;
+        float quitY = playY + 48.0f;
+
+        if (isPointInRect(mouseX, mouseY, btnX, playY, btnW, btnH)) {
+            startSingleplayer();
+        } else if (isPointInRect(mouseX, mouseY, btnX, quitY, btnW, btnH)) {
+            glfwSetWindowShouldClose(window, true);
+        }
+    }
+
 
 
 
@@ -659,7 +799,6 @@ public class MinecraftPE3D {
 
 
     private void loop() {
-        GL.createCapabilities();
         glClearColor(0.53f, 0.81f, 0.98f, 1.0f);
         
         glEnable(GL_DEPTH_TEST);
@@ -686,81 +825,85 @@ public class MinecraftPE3D {
             float deltaTime = (currentTime - lastTime) / 1000000000.0f;
             lastTime = currentTime;
 
-            processInput(deltaTime);
-
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            glLoadIdentity();
-            // Apply camera rotations
-            glRotatef(-pitch, 1.0f, 0.0f, 0.0f);
-            glRotatef(-yaw, 0.0f, 1.0f, 0.0f);
-            // Apply camera translation
-            glTranslatef(-camX, -camY, -camZ);
+            if (gameState == GameState.PLAYING && localPlayer != null) {
+                processInput(deltaTime);
 
-            // Bind the terrain texture
-            glBindTexture(GL_TEXTURE_2D, terrainTexture);
+                localPlayer.getPosition().x = camX;
+                localPlayer.getPosition().y = camY;
+                localPlayer.getPosition().z = camZ;
 
-            // Render the World chunks
-            for (ChunkRenderer cr : chunkRenderers) {
-                cr.render();
-            }
+                world.update(localPlayer);
 
-                        // GUI overlay
-            
-            // Sync dummy player with camera for mob aggro
-            localPlayer.getPosition().x = camX;
-            localPlayer.getPosition().y = camY;
-            localPlayer.getPosition().z = camZ;
-            
-            // Render Entities
-            glDisable(GL_CULL_FACE);
-            for (Entity e : entities) {
-                e.update();
-                glPushMatrix();
-                glTranslatef((float)e.getPosition().x, (float)e.getPosition().y, (float)e.getPosition().z);
-                
-                // MCPE basic animation math based on position
-                float time = (float) glfwGetTime() * 10.0f;
-                float walkAnim = e.getVelocity().length() > 0.01f ? 1.0f : 0.0f;
-                
-                if (e instanceof Pig) {
-                    glBindTexture(GL_TEXTURE_2D, pigTexture);
-                    pigModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Zombie) {
-                    glBindTexture(GL_TEXTURE_2D, zombieTexture);
-                    zombieModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Cow) {
-                    glBindTexture(GL_TEXTURE_2D, cowTexture);
-                    cowModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Sheep) {
-                    glBindTexture(GL_TEXTURE_2D, sheepTexture);
-                    ((SheepModel)sheepModel).render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                    if (true) {
-                        glBindTexture(GL_TEXTURE_2D, sheepFurTexture);
-                        ((SheepModel)sheepModel).renderWool(0.0625f);
-                    }
-                } else if (e instanceof Chicken) {
-                    glBindTexture(GL_TEXTURE_2D, chickenTexture);
-                    chickenModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Creeper) {
-                    glBindTexture(GL_TEXTURE_2D, creeperTexture);
-                    creeperModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Spider) {
-                    glBindTexture(GL_TEXTURE_2D, spiderTexture);
-                    spiderModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
-                } else if (e instanceof Skeleton) {
-                    glBindTexture(GL_TEXTURE_2D, skeletonTexture);
-                    skeletonModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                glLoadIdentity();
+                // Apply camera rotations
+                glRotatef(-pitch, 1.0f, 0.0f, 0.0f);
+                glRotatef(-yaw, 0.0f, 1.0f, 0.0f);
+                // Apply camera translation
+                glTranslatef(-camX, -camY, -camZ);
+
+                // Bind the terrain texture
+                glBindTexture(GL_TEXTURE_2D, terrainTexture);
+
+                // Render the World chunks
+                for (ChunkRenderer cr : chunkRenderers) {
+                    cr.render();
                 }
-                glPopMatrix();
+
+                // Render Entities
+                glDisable(GL_CULL_FACE);
+                for (Entity e : world.getEntities()) {
+                    glPushMatrix();
+                    glTranslatef((float)e.getPosition().x, (float)e.getPosition().y, (float)e.getPosition().z);
+                    // Flip model upside down to match OpenGL coordinates
+                    glScalef(-1.0f, -1.0f, 1.0f);
+
+                    // MCPE basic animation math based on position
+                    float time = (float) glfwGetTime() * 10.0f;
+                    float walkAnim = e.getVelocity().length() > 0.01f ? 1.0f : 0.0f;
+
+                    if (e instanceof Pig) {
+                        glBindTexture(GL_TEXTURE_2D, pigTexture);
+                        pigModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Zombie) {
+                        glBindTexture(GL_TEXTURE_2D, zombieTexture);
+                        zombieModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Cow) {
+                        glBindTexture(GL_TEXTURE_2D, cowTexture);
+                        cowModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Sheep) {
+                        glBindTexture(GL_TEXTURE_2D, sheepTexture);
+                        ((SheepModel)sheepModel).render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                        if (true) {
+                            glBindTexture(GL_TEXTURE_2D, sheepFurTexture);
+                            ((SheepModel)sheepModel).renderWool(0.0625f);
+                        }
+                    } else if (e instanceof Chicken) {
+                        glBindTexture(GL_TEXTURE_2D, chickenTexture);
+                        chickenModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Creeper) {
+                        glBindTexture(GL_TEXTURE_2D, creeperTexture);
+                        creeperModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Spider) {
+                        glBindTexture(GL_TEXTURE_2D, spiderTexture);
+                        spiderModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    } else if (e instanceof Skeleton) {
+                        glBindTexture(GL_TEXTURE_2D, skeletonTexture);
+                        skeletonModel.render(e, time * walkAnim, walkAnim, (float)e.getRotation().y, (float)e.getRotation().x, 0.0625f);
+                    }
+                    glPopMatrix();
+                }
+                // Temporarily disable culling so hand/GUI render properly regardless of orientation
+                glDisable(GL_CULL_FACE);
+
+                renderHeldItem(currentTime);
+                renderGUI();
+
+                glEnable(GL_CULL_FACE);
+            } else {
+                renderMainMenu();
             }
-            // Temporarily disable culling so hand/GUI render properly regardless of orientation
-            glDisable(GL_CULL_FACE);
-
-            renderHeldItem(currentTime);
-            renderGUI();
-
-            glEnable(GL_CULL_FACE);
 
             glfwSwapBuffers(window);
             glfwPollEvents();

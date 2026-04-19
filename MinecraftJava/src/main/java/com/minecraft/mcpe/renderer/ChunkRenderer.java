@@ -59,30 +59,9 @@ public class ChunkRenderer {
         // Dirt: (2,0) index 2
         // Stone: (1,0) index 1
         
-        int texIndexTop = 0;
-        int texIndexSide = 0;
-        int texIndexBottom = 0;
-        
-        if (blockId == Block.GRASS) {
-            texIndexTop = 0;
-            texIndexSide = 3;
-            texIndexBottom = 2;
-        } else if (blockId == Block.DIRT) {
-            texIndexTop = 2; texIndexSide = 2; texIndexBottom = 2;
-        } else if (blockId == Block.STONE) {
-            texIndexTop = 1; texIndexSide = 1; texIndexBottom = 1;
-        } else if (blockId == Block.COBBLESTONE) {
-            texIndexTop = 16; texIndexSide = 16; texIndexBottom = 16;
-        } else if (blockId == Block.WOOD) { // Log
-            texIndexTop = 21; texIndexSide = 20; texIndexBottom = 21;
-        } else if (blockId == Block.LEAVES) {
-            texIndexTop = 52; texIndexSide = 52; texIndexBottom = 52; 
-        } else if (blockId == Block.SAND) {
-            texIndexTop = 18; texIndexSide = 18; texIndexBottom = 18;
-        } else {
-            // Default generic texture index for unknown
-            texIndexTop = 1; texIndexSide = 1; texIndexBottom = 1;
-        }
+        int texIndexTop = BlockTextureMap.getTopTexture(blockId);
+        int texIndexSide = BlockTextureMap.getSideTexture(blockId);
+        int texIndexBottom = BlockTextureMap.getBottomTexture(blockId);
         
         t.addTranslation(wx, wy, wz);
         

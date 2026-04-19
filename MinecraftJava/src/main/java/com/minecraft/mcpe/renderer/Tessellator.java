@@ -69,26 +69,13 @@ public class Tessellator {
         
         buffer.flip();
         
-        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
-        
-        // 8 floats per vertex: r, g, b, u, v, x, y, z
-        int stride = 8 * 4; // 4 bytes per float
-        
-        buffer.position(0);
-        GL11.glColorPointer(3, GL11.GL_FLOAT, stride, buffer);
-        
-        buffer.position(3);
-        GL11.glTexCoordPointer(2, GL11.GL_FLOAT, stride, buffer);
-        
-        buffer.position(5);
-        GL11.glVertexPointer(3, GL11.GL_FLOAT, stride, buffer);
-        
-        GL11.glDrawArrays(GL11.GL_QUADS, 0, vertices);
-        
-        GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
-        GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glBegin(GL11.GL_QUADS);
+        for(int i = 0; i < vertices; i++) {
+            int o = i * 8;
+            GL11.glColor3f(buffer.get(o), buffer.get(o+1), buffer.get(o+2));
+            GL11.glTexCoord2f(buffer.get(o+3), buffer.get(o+4));
+            GL11.glVertex3f(buffer.get(o+5), buffer.get(o+6), buffer.get(o+7));
+        }
+        GL11.glEnd();
     }
 }
